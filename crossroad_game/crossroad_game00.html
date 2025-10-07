@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>奠基大道中</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      width: 100vw;
+      min-height: 100vh;
+    }
+    body {
+      box-sizing: border-box;
+      width: 100vw;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      font-family: Arial, sans-serif;
+      color: #b2ed17;
+    }
+    #game-container {
+      width: 800px;
+      height: 600px;
+      border: 0px solid #b2ed17;
+      box-shadow: 0 0 0px #6a9309;
+      background: #111;
+      overflow: hidden;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    canvas {
+      display: block;
+      margin: 0;
+      padding: 0;
+      background: #222;
+      image-rendering: pixelated;
+    }
+    #overlay {
+      position: absolute;
+      left: 0; top: 0;
+      width: 800px; height: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #b2ed17;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 10;
+      display: none;
+      text-align: center;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .overlay-btn {
+      background-color: transparent;
+      color: #b2ed17;
+      border: 2px solid #b2ed17;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+      display: inline-block;
+    }
+    .overlay-btn:hover {
+      background-color: #b2ed17;
+      color: #000;
+      box-shadow: 0 0 15px #6a9309;
+    }
+    #next-level {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    #start-screen {
+      position: absolute;
+      left: 0; top: 0;
+      width: 800px; height: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    #start-title {
+      color: #b2ed17;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px #6a9309;
+    }
+    #start-btn {
+      background-color: transparent;
+      color: #b2ed17;
+      border: 2px solid #b2ed17;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+    #start-btn:hover {
+      background-color: #b2ed17;
+      color: #000;
+      box-shadow: 0 0 15px #6a9309;
+    }
+    #message {
+      color: #b2ed17;
+      font-size: 28px;
+      text-shadow: 0 0 10px #6a9309;
+      margin-bottom: 20px;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <div id="scale-wrapper">
+  
+  <div id="game-container">
+    <div id="start-screen">
+      <div id="start-title"></div>
+      <button id="start-btn">开始过马路</button>
+    </div>
+    <canvas id="game" width="800" height="600"></canvas>
+    <div id="overlay">
+      <div id="message"></div>
+      <button id="restart" class="overlay-btn">重新开始</button>
+      <button id="next-level" class="overlay-btn" style="display:none;">下一关</button>
+    </div>
+  </div>
+  <script>
+    // ==== 资源加载 ====
+    const ASSETS_PATH = 'assetsCR/';
+    const CAR_SIZE = 55; // 固定车尺寸
+
+    function createImage(src, w=32, h=32) {
+      const img = new window.Image();
+      img.src = src;
+      img.onerror = function() {
+        // 创建一个透明的占位canvas
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        img.src = c.toDataURL();
+      };
+      return img;
+    }
+
+    function createAudio(src) {
+      const audio = new window.Audio();
+      audio.src = src;
+      audio.onerror = function() {
+        audio.play = () => {};
+      };
+      return audio;
+    }
+
+    // 资源对象（车辆方向分组，固定尺寸）
+    const resources = {
+      bg:         createImage(ASSETS_PATH + 'bgCR.png', 800, 600),
+      grass:      createImage(ASSETS_PATH + 'grassCR.png', 800, 60),
+      road:       createImage(ASSETS_PATH + 'roadCR.png', 800, 60),
+      roadline:   createImage(ASSETS_PATH + 'roadlineCR.png', 800, 8),
+      player:     createImage(ASSETS_PATH + 'playerCR.png', 36, 36),
+      player_eye: createImage(ASSETS_PATH + 'player_eyeCR.png', 16, 8),
+      car_left: [
+        createImage(ASSETS_PATH + 'car1L.png', CAR_SIZE, CAR_SIZE),
+        createImage(ASSETS_PATH + 'car2L.png', CAR_SIZE, CAR_SIZE),
+        createImage(ASSETS_PATH + 'car3L.png', CAR_SIZE, CAR_SIZE)
+      ],
+      car_right: [
+        createImage(ASSETS_PATH + 'car1R.png', CAR_SIZE, CAR_SIZE),
+        createImage(ASSETS_PATH + 'car2R.png', CAR_SIZE, CAR_SIZE),
+        createImage(ASSETS_PATH + 'car3R.png', CAR_SIZE, CAR_SIZE)
+      ],
+      crash:      createAudio(ASSETS_PATH + 'crashCR.mp3'),
+      win:        createAudio(ASSETS_PATH + 'winCR.mp3'),
+      button:     createImage(ASSETS_PATH + 'buttonCR.png', 200, 50),
+    };
+
+    // ==== 游戏配置 ====
+    const WIDTH = 800, HEIGHT = 600;
+    const LANE_HEIGHT = 60;
+    const ROAD_COUNT = 10;
+    const PLAYER_SIZE = 36;
+    const PLAYER_SPEED = 2;
+    const CAR_HEIGHT = CAR_SIZE, CAR_MIN_WIDTH = CAR_SIZE, CAR_MAX_WIDTH = CAR_SIZE;
+    const SAFE_ZONE_COLOR = "#5cb85c";
+    const ROAD_COLOR = "#444";
+    const ROAD_LINE_COLOR = "#fff";
+    const LANE_LINE_WIDTH = 2;
+    const CAR_SPEED_RANGE = [0.5, 1];
+    const PLAYER_START_X = WIDTH / 2 - PLAYER_SIZE / 2;
+    const PLAYER_START_Y = HEIGHT - PLAYER_SIZE - 10;
+    const TEXT_COLOR = "#6a9309"
+
+    // 状态变量
+    let player, lanes, offsetY, currentRoad, gameOver, gameWon, cars, input, animId;
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const message = document.getElementById('message');
+    const restartBtn = document.getElementById('restart');
+    const nextLevelBtn = document.getElementById('next-level');
+
+    // 新增：开始界面元素
+    const startScreen = document.getElementById('start-screen');
+    const startBtn = document.getElementById('start-btn');
+
+    // 游戏是否处于“未开始”状态
+    let gameStarted = false;
+
+    // 禁用操作直到点击开始
+    function enableGameInput(enable) {
+      if (enable) {
+        window.addEventListener('keydown', keydownHandler, false);
+        window.addEventListener('keyup', keyupHandler, false);
+      } else {
+        window.removeEventListener('keydown', keydownHandler, false);
+        window.removeEventListener('keyup', keyupHandler, false);
+      }
+    }
+
+    function keydownHandler(e) {
+      if (!gameStarted) return;
+      if (e.key === 'a' || e.key === 'A') input.left = true;
+      if (e.key === 'd' || e.key === 'D') input.right = true;
+      if (e.key === 'w' || e.key === 'W') input.up = true;
+      if (e.key === 's' || e.key === 'S') input.down = true;
+    }
+    function keyupHandler(e) {
+      if (!gameStarted) return;
+      if (e.key === 'a' || e.key === 'A') input.left = false;
+      if (e.key === 'd' || e.key === 'D') input.right = false;
+      if (e.key === 'w' || e.key === 'W') input.up = false;
+      if (e.key === 's' || e.key === 'S') input.down = false;
+    }
+
+    // 车辆生成（车宽高固定，方向分组）
+    function spawnCars() {
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i].type === 'road') {
+          const roadIdx = Math.floor(i/2);
+          const dir = (roadIdx % 2 === 0) ? 1 : -1;
+          const carCount = 2 + Math.floor(Math.random()*2);
+          let y = i*LANE_HEIGHT + (LANE_HEIGHT - CAR_SIZE)/2;
+          for (let c = 0; c < carCount; c++) {
+            let width = CAR_SIZE, height = CAR_SIZE;
+            let x = dir === 1 ? Math.random()*(WIDTH-100) : WIDTH-Math.random()*(WIDTH-100)-width;
+            let speed = CAR_SPEED_RANGE[0] + Math.random()*(CAR_SPEED_RANGE[1]-CAR_SPEED_RANGE[0]);
+            speed += roadIdx*0.2;
+            cars[i].push({
+              x, y,
+              width,
+              height,
+              carType: Math.floor(Math.random()*resources.car_left.length),
+              speed: speed*dir,
+              dir
+            });
+          }
+        }
+      }
+    }
+
+    function resetGame() {
+      // 初始化玩家
+      player = {
+        x: PLAYER_START_X,
+        y: PLAYER_START_Y,
+        width: PLAYER_SIZE,
+        height: PLAYER_SIZE,
+      };
+      // 初始化赛道（草地+马路交替）
+      lanes = [];
+      for (let i = 0; i < ROAD_COUNT*2+1; i++) {
+        lanes.push({
+          type: i % 2 === 0 ? 'grass' : 'road',
+          index: i
+        });
+      }
+      cars = [];
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i].type === 'road') {
+          cars.push([]);
+        } else {
+          cars.push(null);
+        }
+      }
+      offsetY = lanes.length * LANE_HEIGHT - HEIGHT;
+      currentRoad = 0;
+      gameOver = false;
+      gameWon = false;
+      input = {left: false, right: false, up: false, down: false};
+      overlay.style.display = 'none';
+      nextLevelBtn.style.display = 'none';
+      spawnCars();
+      if (gameStarted) loop();
+    }
+
+    // 游戏主循环
+    function loop() {
+      update();
+      draw();
+      if (!gameOver && !gameWon)
+        animId = requestAnimationFrame(loop);
+    }
+
+    function update() {
+      // 玩家移动
+      let nx = player.x, ny = player.y;
+      if (input.left) nx -= PLAYER_SPEED;
+      if (input.right) nx += PLAYER_SPEED;
+      if (input.up) ny -= PLAYER_SPEED;
+      if (input.down) ny += PLAYER_SPEED;
+      nx = Math.max(0, Math.min(WIDTH - PLAYER_SIZE, nx));
+      ny = Math.max(0, Math.min(HEIGHT - PLAYER_SIZE, ny));
+      player.x = nx;
+      player.y = ny;
+
+      // 画面滚动
+      const playerGlobalY = player.y + offsetY;
+      const scrollLine = HEIGHT * 0.4;
+      if (player.y < scrollLine && offsetY > 0) {
+        let dy = scrollLine - player.y;
+        offsetY = Math.max(0, offsetY - dy);
+        player.y = scrollLine;
+      }
+
+      // 车辆移动
+      for (let i = 0; i < cars.length; i++) {
+        if (!cars[i]) continue;
+        for (let car of cars[i]) {
+          car.x += car.speed;
+          if (car.dir === 1 && car.x > WIDTH) {
+            car.x = -car.width;
+          }
+          if (car.dir === -1 && car.x + car.width < 0) {
+            car.x = WIDTH;
+          }
+        }
+      }
+
+      // 检查碰撞
+      let playerLaneIdx = Math.floor((player.y + offsetY) / LANE_HEIGHT);
+      if (lanes[playerLaneIdx] && lanes[playerLaneIdx].type === 'road') {
+        for (let car of cars[playerLaneIdx]) {
+          if (rectsCollide(player, {x:car.x, y:car.y-offsetY, width:car.width, height:car.height})) {
+            gameOver = true;
+            resources.crash.play && resources.crash.play();
+            showOverlay('被撞到了！\n请注意来往电动自行车。', false);
+            return;
+          }
+        }
+      }
+
+      // 判断是否穿越新马路
+      if (lanes[playerLaneIdx] && lanes[playerLaneIdx].type === 'grass') {
+        if (playerLaneIdx < lanes.length-1) {
+          const prevLane = Math.floor((player.y + offsetY + PLAYER_SPEED) / LANE_HEIGHT);
+          if (lanes[prevLane] && lanes[prevLane].type === 'road') {
+            currentRoad += 1;
+            if (currentRoad >= ROAD_COUNT) {
+              gameWon = true;
+              resources.win.play && resources.win.play();
+              showOverlay('你成功穿越了所有马路！', true);
+              return;
+            }
+          }
+        }
+      }
+
+      // 到达顶端也算通关
+      if (player.y + offsetY < 0) {
+        gameWon = true;
+        resources.win.play && resources.win.play();
+        showOverlay('你成功穿越了所有马路！', true);
+        return;
+      }
+    }
+
+    function draw() {
+      // 背景
+      if (resources.bg.complete && resources.bg.naturalWidth > 0) {
+        ctx.drawImage(resources.bg, 0, 0, WIDTH, HEIGHT);
+      } else {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      }
+      // 画所有赛道
+      for (let i = 0; i < lanes.length; i++) {
+        let top = i * LANE_HEIGHT - offsetY;
+        if (top + LANE_HEIGHT < 0 || top > HEIGHT) continue;
+        if (lanes[i].type === 'grass') {
+          if (resources.grass.complete && resources.grass.naturalWidth > 0) {
+            ctx.drawImage(resources.grass, 0, top, WIDTH, LANE_HEIGHT);
+          } else {
+            ctx.fillStyle = SAFE_ZONE_COLOR;
+            ctx.fillRect(0, top, WIDTH, LANE_HEIGHT);
+          }
+        } else {
+          if (resources.road.complete && resources.road.naturalWidth > 0) {
+            ctx.drawImage(resources.road, 0, top, WIDTH, LANE_HEIGHT);
+          } else {
+            ctx.fillStyle = ROAD_COLOR;
+            ctx.fillRect(0, top, WIDTH, LANE_HEIGHT);
+          }
+          // 马路虚线
+          if (resources.roadline.complete && resources.roadline.naturalWidth > 0) {
+            ctx.drawImage(resources.roadline, 0, top + LANE_HEIGHT/2 - 4, WIDTH, 8);
+          } else {
+            ctx.strokeStyle = ROAD_LINE_COLOR;
+            ctx.lineWidth = LANE_LINE_WIDTH;
+            ctx.setLineDash([18, 16]);
+            ctx.beginPath();
+            ctx.moveTo(0, top + LANE_HEIGHT/2);
+            ctx.lineTo(WIDTH, top + LANE_HEIGHT/2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+      }
+      // 画车辆（方向图片分组，尺寸固定）
+      for (let i = 0; i < cars.length; i++) {
+        if (!cars[i]) continue;
+        for (let car of cars[i]) {
+          let carY = car.y - offsetY;
+          if (carY+car.height < 0 || carY > HEIGHT) continue;
+          let carImg = (car.dir === 1) ? resources.car_right[car.carType] : resources.car_left[car.carType];
+          if (carImg && carImg.complete && carImg.naturalWidth > 0) {
+            ctx.drawImage(carImg, car.x, carY, CAR_SIZE, CAR_SIZE);
+          } else {
+            ctx.fillStyle = car.dir === 1 ? "#fd3d3d" : "#3dc0fd";
+            ctx.fillRect(car.x, carY, CAR_SIZE, CAR_SIZE);
+            ctx.fillStyle = "#e0e0e0";
+            ctx.fillRect(car.x+CAR_SIZE*0.1, carY+6, CAR_SIZE*0.8, CAR_SIZE*0.5);
+          }
+        }
+      }
+      // 画玩家
+      if (resources.player.complete && resources.player.naturalWidth > 0) {
+        ctx.drawImage(resources.player, player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
+        if (resources.player_eye.complete && resources.player_eye.naturalWidth > 0) {
+          ctx.drawImage(resources.player_eye, player.x+PLAYER_SIZE/2-10, player.y+PLAYER_SIZE/2-8, 20, 8);
+        }
+      } else {
+        ctx.save();
+        ctx.fillStyle = "#287cdf";
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.x+PLAYER_SIZE/2, player.y+PLAYER_SIZE/2, PLAYER_SIZE/2-3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.fillStyle = "#222";
+        ctx.arc(player.x+PLAYER_SIZE/2-6, player.y+PLAYER_SIZE/2-2, 3, 0, Math.PI*2);
+        ctx.arc(player.x+PLAYER_SIZE/2+6, player.y+PLAYER_SIZE/2-2, 3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+      // 进度显示
+      ctx.fillStyle = "TEXT_COLOR";
+      ctx.font = "20px Arial";
+      ctx.fillText(`已穿越马路：${currentRoad}/${ROAD_COUNT}`, 10, 30);
+    }
+
+    function rectsCollide(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x &&
+             a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+
+    function showOverlay(msg, showNext) {
+      cancelAnimationFrame(animId);
+      message.innerText = msg;
+      overlay.style.display = 'flex';
+      nextLevelBtn.style.display = showNext ? 'block' : 'none';
+    }
+
+    restartBtn.onclick = () => {
+      resetGame();
+      if (gameStarted) loop();
+    };
+
+    nextLevelBtn.onclick = () => {
+      if (window.parent) {
+        window.parent.postMessage('goto-level-3', '*');
+      } else {
+        nextLevelBtn.innerText = "已完成";
+        setTimeout(() => {
+          nextLevelBtn.innerText = "下一关";
+        }, 1000);
+      }
+    };
+
+    // ==== 开始页面逻辑 ====
+    enableGameInput(false);
+
+    startBtn.onclick = function() {
+      startScreen.style.display = 'none';
+      gameStarted = true;
+      enableGameInput(true);
+      resetGame();
+      loop();
+      canvas.focus && canvas.focus();
+    };
+
+    resetGame();
+  </script>
+</body>
+
+<style>
+  /* 自适应缩放修复 - 不改动原有样式，仅新增 */
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  #scale-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    transform-origin: top left;
+  }
+  #game-container {
+    width: 800px;
+    height: 600px;
+    transform-origin: top left;
+  }
+</style>
+
+<script>
+  // 自动缩放适配函数（保持800x600比例）
+  function fitGameToScreen() {
+    const wrapper = document.getElementById('scale-wrapper');
+    const game = document.getElementById('game-container');
+    if (!wrapper || !game) return;
+
+    const ww = window.innerWidth;
+    const wh = window.innerHeight;
+    const scale = Math.min(ww / 800, wh / 600);
+
+    const offsetX = (ww - 800 * scale) / 2;
+    const offsetY = (wh - 600 * scale) / 2;
+
+    game.style.transform = `scale(${scale})`;
+    game.style.position = 'absolute';
+    game.style.left = offsetX + 'px';
+    game.style.top = offsetY + 'px';
+  }
+
+  window.addEventListener('resize', fitGameToScreen);
+  window.addEventListener('load', fitGameToScreen);
+</script>
+
+</html>
+  </div>
+</body>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>缤纷活力大铁柱</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: #111;
+      font-family: Arial, sans-serif;
+      color: #70d9ff;
+      overflow: hidden;
+    }
+    .game-container {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      background: #111; position: relative;
+      box-shadow: 0 0 20px #44859c;
+    }
+    #gameCanvas { display: block; background: #111; width: 100%; height: 100%; }
+    #overlay {
+      position: absolute; left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); color: #70d9ff;
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; z-index: 10;
+      text-align: center; padding: 10px; box-sizing: border-box;
+    }
+    #message {
+      color: #70d9ff; font-size: 28px;
+      text-shadow: 0 0 10px #44859c;
+      margin-bottom: 20px; white-space: pre-line;
+    }
+    .overlay-btn {
+      background: transparent; color: #70d9ff;
+      border: 2px solid #70d9ff; padding: 10px 20px;
+      margin: 10px; font-size: 16px; cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .overlay-btn:hover {
+      background: #70d9ff; color: #000;
+      box-shadow: 0 0 15px #44859c;
+    }
+    #timer {
+      position: absolute; left: 50%; top: 32px;
+      transform: translateX(-50%);
+      font-size: 20px; color: #70d9ff;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid #70d9ff; border-radius: 5px;
+      padding: 5px 10px; font-family: monospace; z-index: 2;
+    }
+    #keyGuide {
+      position: absolute; left: 20px; top: 20px;
+      background: rgba(255,255,255,0.75);
+      border-radius: 8px; padding: 10px 15px;
+      font-size: 16px; color: #333; z-index: 2;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      line-height: 1.5;
+    }
+    #start-screen {
+      position: absolute; left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 20; display: flex;
+      flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+    }
+    #start-title {
+      color: #70d9ff; font-size: 48px; font-weight: bold;
+      margin-bottom: 30px; text-shadow: 0 0 10px #44859c;
+    }
+    #startBtn {
+      background: transparent; color: #70d9ff;
+      border: 2px solid #70d9ff;
+      padding: 10px 20px; margin: 10px; font-size: 16px;
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    #startBtn:hover {
+      background: #70d9ff; color: #000; box-shadow: 0 0 15px #44859c;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div id="start-screen">
+      <div id="start-title"></div>
+      <button id="startBtn">开始奔跑</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="overlay">
+      <div id="message"></div>
+      <button id="restartBtn" class="overlay-btn">重新开始</button>
+      <button id="confirmBtn" class="overlay-btn" style="display:none;">游戏结束</button>
+    </div>
+    <div id="timer">00:30</div>
+    <div id="keyGuide">
+      <strong>键位说明：</strong><br>
+      W - 跳跃<br>
+      S - 下蹲<br>
+      A / D - 左右移动
+    </div>
+  </div>
+
+  <script>
+    const assetDir = 'assetsDR/';
+    const assetsToLoad = {
+      bg: assetDir + 'bgDR.png',
+      ground: assetDir + 'groundDR.png',
+      dino: assetDir + 'dinoDR.png',
+      dinoDuck: assetDir + 'dino_duckDR.png',
+      dinoEye: assetDir + 'dino_eyeDR.png',
+      obstacle: assetDir + 'obstacleDR.png',
+      obstacleAir: assetDir + 'obstacle_airDR.png',
+      jump: assetDir + 'jumpDR.mp3',
+      fail: assetDir + 'failDR.mp3',
+      win: assetDir + 'winDR.mp3'
+    };
+
+    function loadImageSafe(src, fw=32, fh=32){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>{const c=document.createElement('canvas');c.width=fw;c.height=fh;r(c)};i.src=src;});}
+    function loadAudioSafe(src){return new Promise(r=>{const a=new Audio();a.oncanplaythrough=()=>r(a);a.onerror=()=>r({play(){}});a.src=src;});}
+    async function loadAllAssets(){
+      const [bg,ground,dino,dinoDuck,dinoEye,obstacle,obstacleAir,jump,fail,win]=await Promise.all([
+        loadImageSafe(assetsToLoad.bg,800,600),
+        loadImageSafe(assetsToLoad.ground,800,24),
+        loadImageSafe(assetsToLoad.dino,48,64),
+        loadImageSafe(assetsToLoad.dinoDuck,48,38),
+        loadImageSafe(assetsToLoad.dinoEye,12,12),
+        loadImageSafe(assetsToLoad.obstacle,32,48),
+        loadImageSafe(assetsToLoad.obstacleAir,80,20),
+        loadAudioSafe(assetsToLoad.jump),
+        loadAudioSafe(assetsToLoad.fail),
+        loadAudioSafe(assetsToLoad.win)
+      ]);
+      return {bg,ground,dino,dinoDuck,dinoEye,obstacle,obstacleAir,jump,fail,win};
+    }
+
+    const GAME_WIDTH=800,GAME_HEIGHT=600,GROUND_Y=510,DINO_WIDTH=64,DINO_HEIGHT=64,DINO_DUCK_HEIGHT=48;
+    const OBSTACLE_WIDTH=68,OBSTACLE_HEIGHT_GROUND=65,OBSTACLE_AIR_BAR_WIDTH=96,OBSTACLE_AIR_BAR_HEIGHT=42,OBSTACLE_AIR_Y=GROUND_Y-DINO_DUCK_HEIGHT-43;
+    const OBSTACLE_GAP_MIN=400,OBSTACLE_GAP_MAX=750,OBSTACLE_SPEED_INIT=4.2,OBSTACLE_SPEED_MAX=4.5,GRAVITY=1.3,JUMP_VELOCITY=-30,GAME_TIME=30,COLLISION_BOX_SCALE=0.8;
+
+    const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+    const restartBtn=document.getElementById('restartBtn'),confirmBtn=document.getElementById('confirmBtn'),timerDiv=document.getElementById('timer');
+    const overlay=document.getElementById('overlay'),messageEl=document.getElementById('message'),startScreen=document.getElementById('start-screen'),startBtn=document.getElementById('startBtn');
+
+    let dino,obstacles,isGameOver,isGameWin,obstacleSpeed,nextObstacleDist,startTime,elapsedTime,animationId,isJumping=false,isDucking=false,gameStarted=false,ASSET=null;
+    let moveLeft=false,moveRight=false; const MOVE_SPEED=6;
+
+    function createDino(){return {x:200,y:GROUND_Y-DINO_HEIGHT,width:DINO_WIDTH,height:DINO_HEIGHT,vy:0,onGround:true,ducking:false};}
+    function createObstacle(type,x){return type==='ground'?{type:'ground',x,y:GROUND_Y-OBSTACLE_HEIGHT_GROUND,width:OBSTACLE_WIDTH,height:OBSTACLE_HEIGHT_GROUND}:{type:'air',x,y:OBSTACLE_AIR_Y,width:OBSTACLE_AIR_BAR_WIDTH,height:OBSTACLE_AIR_BAR_HEIGHT};}
+    function resetGame(){dino=createDino();obstacles=[];isGameOver=false;isGameWin=false;obstacleSpeed=OBSTACLE_SPEED_INIT;nextObstacleDist=randBetween(OBSTACLE_GAP_MIN,OBSTACLE_GAP_MAX);startTime=performance.now();elapsedTime=0;isJumping=false;isDucking=false;moveLeft=false;moveRight=false;restartBtn.style.display='none';confirmBtn.style.display='none';overlay.style.display='none';timerDiv.textContent=formatTime(GAME_TIME);if(animationId)cancelAnimationFrame(animationId);if(gameStarted)gameLoop(performance.now());}
+    function randBetween(a,b){return Math.floor(Math.random()*(b-a))+a;}
+    function formatTime(s){let m=String(Math.floor(s/60)).padStart(2,'0');let ss=String(s%60).padStart(2,'0');return `${m}:${ss}`;}
+    function drawBg(){ctx.drawImage(ASSET.bg,0,0,canvas.width,canvas.height);}
+    function drawGround(){ctx.drawImage(ASSET.ground,0,GROUND_Y,canvas.width,22);}
+    function drawDino(){ctx.drawImage(dino.ducking?ASSET.dinoDuck:ASSET.dino,dino.x,dino.y,dino.width,dino.height);ctx.drawImage(ASSET.dinoEye,dino.x+dino.width-13,dino.y+12,12,12);}
+    function drawObstacles(){for(let ob of obstacles){if(ob.type==='ground')ctx.drawImage(ASSET.obstacle,ob.x,ob.y,ob.width,ob.height);else ctx.drawImage(ASSET.obstacleAir,ob.x,ob.y,ob.width,ob.height);}}
+    function showOverlay(msg,showNext){cancelAnimationFrame(animationId);messageEl.textContent=msg;overlay.style.display='flex';restartBtn.style.display='inline-block';confirmBtn.style.display=showNext?'inline-block':'none';}
+    function getDinoCollisionBox(){let w=dino.width*COLLISION_BOX_SCALE;let h=(dino.ducking?DINO_DUCK_HEIGHT:DINO_HEIGHT)*COLLISION_BOX_SCALE;let x=dino.x+(dino.width-w)/2;let y=dino.y+((dino.ducking?DINO_DUCK_HEIGHT:DINO_HEIGHT)-h)/2;return {x,y,width:w,height:h};}
+    function getObstacleCollisionBox(ob){let w=ob.width*COLLISION_BOX_SCALE;let h=ob.height*COLLISION_BOX_SCALE;let x=ob.x+(ob.width-w)/2;let y=ob.y+(ob.height-h)/2;return {x,y,width:w,height:h};}
+    function isCollide(a,b){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;}
+    function playAudioSafe(a){try{a&&a.play&&a.play();}catch(e){}}
+
+    function gameLoop(now){
+      if(isGameOver||isGameWin){drawBg();drawGround();drawObstacles();drawDino();return;}
+      elapsedTime=Math.floor((now-startTime)/1000);
+      let leftTime=Math.max(0,GAME_TIME-elapsedTime);
+      timerDiv.textContent=formatTime(leftTime);
+      obstacleSpeed=OBSTACLE_SPEED_INIT+((OBSTACLE_SPEED_MAX-OBSTACLE_SPEED_INIT)*(elapsedTime/GAME_TIME));
+
+      // 水平移动控制
+      if(moveLeft) dino.x=Math.max(0,dino.x-MOVE_SPEED);
+      if(moveRight) dino.x=Math.min(GAME_WIDTH-dino.width,dino.x+MOVE_SPEED);
+
+      if(!dino.onGround){dino.vy+=GRAVITY;dino.y+=dino.vy;
+        if(dino.y>=GROUND_Y-(dino.ducking?DINO_DUCK_HEIGHT:DINO_HEIGHT)){dino.y=GROUND_Y-(dino.ducking?DINO_DUCK_HEIGHT:DINO_HEIGHT);dino.vy=0;dino.onGround=true;isJumping=false;}
+      }
+
+      for(let ob of obstacles)ob.x-=obstacleSpeed;
+      obstacles=obstacles.filter(ob=>ob.x+ob.width>=0);
+      nextObstacleDist-=obstacleSpeed;
+      if(nextObstacleDist<=0){let type=Math.random()<0.6?'ground':'air';if(obstacles.length>0&&obstacles[obstacles.length-1].type==='air')type='ground';obstacles.push(createObstacle(type,GAME_WIDTH+10));nextObstacleDist=randBetween(OBSTACLE_GAP_MIN,OBSTACLE_GAP_MAX);}
+
+      // 碰撞检测（包括移动时）
+      for(let ob of obstacles){let dinoBox=getDinoCollisionBox();let obBox=getObstacleCollisionBox(ob);if(isCollide(dinoBox,obBox)){isGameOver=true;playAudioSafe(ASSET.fail);showOverlay('被绊倒了！\n再来一次吧！',false);break;}}
+
+      if(elapsedTime>=GAME_TIME){isGameWin=true;playAudioSafe(ASSET.win);showOverlay('你躲开了所有障碍物！',true);}
+      drawBg();drawGround();drawObstacles();drawDino();
+      if(!isGameOver&&!isGameWin)animationId=requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown',e=>{
+      if(!gameStarted||isGameOver||isGameWin)return;
+      if((e.key==='w'||e.key==='W')&&dino.onGround&&!dino.ducking){dino.vy=JUMP_VELOCITY;dino.onGround=false;isJumping=true;playAudioSafe(ASSET.jump);}
+      if((e.key==='s'||e.key==='S')&&dino.onGround&&!dino.ducking){dino.ducking=true;dino.height=DINO_DUCK_HEIGHT;dino.y=GROUND_Y-DINO_DUCK_HEIGHT;isDucking=true;}
+      if(e.key==='a'||e.key==='A')moveLeft=true;
+      if(e.key==='d'||e.key==='D')moveRight=true;
+    });
+    window.addEventListener('keyup',e=>{
+      if(!gameStarted||isGameOver||isGameWin)return;
+      if((e.key==='s'||e.key==='S')&&dino.ducking){dino.ducking=false;dino.height=DINO_HEIGHT;dino.y=GROUND_Y-DINO_HEIGHT;isDucking=false;}
+      if(e.key==='a'||e.key==='A')moveLeft=false;
+      if(e.key==='d'||e.key==='D')moveRight=false;
+    });
+
+    restartBtn.onclick=resetGame;
+    confirmBtn.onclick=()=>{if(window.parent&&window.parent!==window)window.parent.postMessage('dino-complete','*');else{alert('恭喜通关！');resetGame();}};
+    startBtn.onclick=()=>{startScreen.style.display='none';gameStarted=true;resetGame();};
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&window.parent&&window.parent!==window)resetGame();});
+    loadAllAssets().then(a=>{ASSET=a;resetGame();});
+  </script>
+</body>
+</html>

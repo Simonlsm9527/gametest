@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>丰施街区</title>
+  <meta name="viewport" content="width=800">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+      /* 背景通过JS注入 */
+    }
+    .containerLM {
+      width: 800px;
+      height: 600px;
+      border-radius: 24px;
+      box-shadow: 0 8px 36px #0003;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      /* 背景通过JS注入 */
+    }
+    .titleLM {
+      font-size: 2.4em;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+      font-weight: 700;
+      text-shadow: 1px 2px 8px #fff5;
+      color: #ffc85755;
+    }
+.boardLM {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  /* 移除固定宽高 */
+  /* width: 600px; */
+  /* height: 600px; */
+  /* 添加以下属性 */
+  aspect-ratio: 1 / 1;
+  width: 80vmin;
+  max-width: 600px;
+  max-height: 600px;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px #0002;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 16px;
+}
+    .cellLM {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* 修改字体大小使用相对单位 */
+      font-size: calc(12px + 1.5vmin);
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      font-family: inherit;
+      font-weight: bold;
+      /* 背景通过JS注入 */
+      background-size: cover;
+      background-position: center;
+      border: 1px solid #ffc857;
+      transition: background 0.2s;
+    }
+    .cellLM.revealedLM {
+      /* 背景通过JS注入 */
+      cursor: default;
+      border-color: #ffc857;
+    }
+    /* .cellLM.mineLM 与 .cellLM.flaggedLM 的背景由 JS 注入，无需额外样式规则 */
+    .cellLM .mushroomLM {
+      /* 修改为使用相对大小 */
+      width: 60%;
+      height: 60%;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+      object-fit: contain;
+    }
+.info-barLM {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* 移除固定宽度 */
+  /* width: 600px; */
+  /* 添加相对宽度 */
+  width: 80vmin;
+  max-width: 600px;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  font-size: 1.2em;
+  color: #b58c3b55;
+  font-weight: 600;
+  text-shadow: 0 1px #5c471e55;
+  /* 添加响应式字体大小 */
+  font-size: calc(10px + 1vmin);
+}
+    .game-overLM, .game-winLM {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 800px;
+      height: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2em;
+      color: #ffc857;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 10px #ffc85755;
+      border-radius: 24px;
+      transition: opacity 0.3s;
+      pointer-events: all;
+      text-align: center;
+    }
+    .btn-areaLM {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+      /* 在原有样式基础上添加以下内容 */
+  .game-winLM .btn-areaLM {
+    flex-direction: column;
+    align-items: center;
+    gap: 0px;
+  }
+    /* 仅覆盖结束页面按钮样式，模仿 maze_game */
+    .game-overLM .btn-areaLM button,
+    .game-winLM .btn-areaLM button {
+      background-color: transparent;
+      color: #ffc857;
+      border: 2px solid #ffc857;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      outline: none;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .game-overLM .btn-areaLM button:hover,
+    .game-winLM .btn-areaLM button:hover {
+      background-color: #ffc857;
+      color: #000;
+      box-shadow: 0 0 15px #ffc85755;
+    }
+@media (max-width: 900px) {
+  .containerLM {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+  .boardLM, .info-barLM {
+    /* 修改为使用相对单位 */
+    width: 90vmin;
+    min-width: unset;
+    max-width: 90vmin;
+  }
+  .game-overLM, .game-winLM {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+}
+@media (max-width: 600px) {
+  .boardLM, .info-barLM {
+    width: 95vmin;
+    max-width: 95vmin;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="containerLM">
+    <div class="titleLM"></div>
+    <div class="info-barLM">
+      <span id="mine-countLM">盖章点：0</span>
+      <span id="flag-countLM">已盖章打卡： 0</span>
+    </div>
+    <div class="boardLM" id="boardLM"></div>
+    <div class="game-overLM" id="gameOverLM" style="display:none;">
+      <div> 集章失败！</div>
+      <div class="btn-areaLM">
+        <button onclick="restartGameLM()">重新开始</button>
+      </div>
+    </div>
+    <div class="game-winLM" id="gameWinLM" >
+      <div> 集章成功！</div>
+      <div class="btn-areaLM">
+        <button onclick="restartGameLM()">重新开始</button>
+        <button onclick="nextLevelLM()">下一关</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // ==== 资源定义 ====
+    const ASSETS_LM = {
+      bg: 'assetsLM/bgLM.jpg',
+      board: 'assetsLM/boardLM.png',
+      cell: 'assetsLM/cellLM.png',
+      cell_revealed: 'assetsLM/cell_revealedLM.png',
+      cell_flag: 'assetsLM/cell_flagLM.png',
+      cell_mine: 'assetsLM/cell_mineLM.png',
+      mushroom: 'assetsLM/mushroomLM.png',
+      sound_win: 'assetsLM/winLM.mp3',
+      sound_lose: 'assetsLM/loseLM.mp3',
+      sound_click: 'assetsLM/clickLM.mp3'
+    };
+    // 透明占位图像
+    const TRANSPARENT_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2NgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
+
+    // ==== 资源加载器 ====
+    function loadImgLM(src, cb) {
+      const img = new window.Image();
+      img.onload = () => cb(src);
+      img.onerror = () => cb(TRANSPARENT_IMG);
+      img.src = src;
+    }
+    // 用于音效（静默失败）
+    function loadAudioLM(src) {
+      try {
+        const audio = new window.Audio();
+        audio.src = src;
+        audio.onerror = () => {};
+        return audio;
+      } catch {
+        return null;
+      }
+    }
+
+    // ==== 全局资源变量 ====
+    const loadedAssetsLM = {};
+    function preloadLM(callback) {
+      let loaded = 0, total = 6;
+      // 背景、棋盘、格子、旗帜、地雷、蘑菇
+      Object.entries({
+        bg: ASSETS_LM.bg,
+        board: ASSETS_LM.board,
+        cell: ASSETS_LM.cell,
+        cell_revealed: ASSETS_LM.cell_revealed,
+        cell_flag: ASSETS_LM.cell_flag,
+        cell_mine: ASSETS_LM.cell_mine,
+        mushroom: ASSETS_LM.mushroom
+      }).forEach(([key, src]) => {
+        loadImgLM(src, result => {
+          loadedAssetsLM[key] = result;
+          if (++loaded === 7) callback();
+        });
+      });
+    }
+    // 预加载音效
+    const audioWinLM = loadAudioLM(ASSETS_LM.sound_win);
+    const audioLoseLM = loadAudioLM(ASSETS_LM.sound_lose);
+    const audioClickLM = loadAudioLM(ASSETS_LM.sound_click);
+
+    // ==== 游戏参数 ====
+    const ROWS = 8, COLS = 8;
+    let mineCountLM = 0, flagCountLM = 0;
+    let boardLM = [], revealedLM = [], flaggedLM = [], gameOverLM = false, cellsRevealedLM = 0;
+
+    const boardElLM = document.getElementById('boardLM');
+    const mineCountElLM = document.getElementById('mine-countLM');
+    const flagCountElLM = document.getElementById('flag-countLM');
+    const gameOverElLM = document.getElementById('gameOverLM');
+    const gameWinElLM = document.getElementById('gameWinLM');
+
+    // ==== 工具函数 ====
+    function randomIntLM(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function getNumColorLM(n){
+      const colors = [
+        '#0000cd', // 1 蓝
+        '#178600', // 2 绿
+        '#d43400', // 3 红
+        '#0c7a8c', // 4 蓝绿
+        '#842c0f', // 5 棕
+        '#9a00b4', // 6 紫
+        '#1f1f1f', // 7 黑
+        '#444444'  // 8 灰
+      ];
+      return colors[n-1] || '#000';
+    }
+
+    // ==== 游戏初始化 ====
+    function initBoardLM() {
+      mineCountLM = randomIntLM(3, 8);
+      flagCountLM = 0;
+      cellsRevealedLM = 0;
+      boardLM = [];
+      revealedLM = [];
+      flaggedLM = [];
+      gameOverLM = false;
+      // 初始化空棋盘
+      for(let r=0; r<ROWS; r++){
+        boardLM[r] = [];
+        revealedLM[r] = [];
+        flaggedLM[r] = [];
+        for(let c=0; c<COLS; c++){
+          boardLM[r][c] = 0; // 0 代表无雷
+          revealedLM[r][c] = false;
+          flaggedLM[r][c] = false;
+        }
+      }
+      // 随机埋雷
+      let mines = 0;
+      while(mines < mineCountLM){
+        let rr = randomIntLM(0, ROWS-1), cc = randomIntLM(0, COLS-1);
+        if(boardLM[rr][cc] !== 'M'){
+          boardLM[rr][cc] = 'M'; mines++;
+        }
+      }
+      // 计算地雷数字
+      for(let r=0; r<ROWS; r++){
+        for(let c=0; c<COLS; c++){
+          if(boardLM[r][c] === 'M') continue;
+          let cnt = 0;
+          for(let dr=-1; dr<=1; dr++){
+            for(let dc=-1; dc<=1; dc++){
+              let nr = r+dr, nc = c+dc;
+              if(nr>=0 && nr<ROWS && nc>=0 && nc<COLS && boardLM[nr][nc]==='M'){
+                cnt++;
+              }
+            }
+          }
+          boardLM[r][c] = cnt;
+        }
+      }
+      updateInfoBarLM();
+      renderBoardLM();
+      hideCoverLM();
+    }
+    function updateInfoBarLM(){
+      mineCountElLM.textContent = `盖章点：${mineCountLM}`;
+      flagCountElLM.textContent = `已盖章打卡： ${flagCountLM}`;
+    }
+
+    // ==== 棋盘渲染 ====
+    function renderBoardLM(){
+      boardElLM.innerHTML = '';
+      for(let r=0; r<ROWS; r++){
+        for(let c=0; c<COLS; c++){
+          const cell = document.createElement('div');
+          cell.classList.add('cellLM');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          // 背景
+          cell.style.backgroundImage = `url('${loadedAssetsLM.cell || TRANSPARENT_IMG}')`;
+          if(revealedLM[r][c]) {
+            cell.classList.add('revealedLM');
+            cell.style.backgroundImage = `url('${loadedAssetsLM.cell_revealed || TRANSPARENT_IMG}')`;
+            if(boardLM[r][c] === 'M'){
+              cell.classList.add('mineLM');
+              cell.style.backgroundImage = `url('${loadedAssetsLM.cell_mine || TRANSPARENT_IMG}')`;
+              // 蘑菇图
+              const img = document.createElement('img');
+              img.className = 'mushroomLM';
+              img.src = loadedAssetsLM.mushroom || TRANSPARENT_IMG;
+              img.alt = 'mushroom';
+              img.onerror = () => {img.src = TRANSPARENT_IMG;}
+              cell.appendChild(img);
+            } else if(boardLM[r][c] > 0){
+              cell.textContent = boardLM[r][c];
+              cell.style.color = getNumColorLM(boardLM[r][c]);
+            }
+          } else if(flaggedLM[r][c]){
+            cell.classList.add('flaggedLM');
+            cell.style.backgroundImage = `url('${loadedAssetsLM.cell_flag || TRANSPARENT_IMG}')`;
+            cell.textContent = '';
+          }
+          cell.addEventListener('click', handleCellClickLM);
+          cell.addEventListener('contextmenu', handleCellRightClickLM);
+          boardElLM.appendChild(cell);
+        }
+      }
+    }
+
+    // ==== 游戏交互 ====
+    function handleCellClickLM(e){
+      if(gameOverLM) return;
+      const r = Number(this.dataset.row), c = Number(this.dataset.col);
+      if(revealedLM[r][c] || flaggedLM[r][c]) return;
+      revealCellLM(r, c);
+      renderBoardLM();
+      checkWinLM();
+    }
+    function handleCellRightClickLM(e){
+      e.preventDefault();
+      if(gameOverLM) return;
+      const r = Number(this.dataset.row), c = Number(this.dataset.col);
+      if(revealedLM[r][c]) return;
+      flaggedLM[r][c] = !flaggedLM[r][c];
+      flagCountLM += flaggedLM[r][c] ? 1 : -1;
+      updateInfoBarLM();
+      renderBoardLM();
+      checkWinLM();
+    }
+    function revealCellLM(r, c){
+      if(revealedLM[r][c] || flaggedLM[r][c]) return;
+      revealedLM[r][c] = true;
+      cellsRevealedLM++;
+      if(boardLM[r][c] === 'M'){
+        playAudioLM(audioLoseLM);
+        showGameOverLM();
+        revealAllMinesLM();
+        renderBoardLM();
+        return;
+      } else {
+        playAudioLM(audioClickLM);
+      }
+      if(boardLM[r][c] === 0){
+        // 扩散翻开
+        for(let dr=-1; dr<=1; dr++){
+          for(let dc=-1; dc<=1; dc++){
+            let nr = r+dr, nc = c+dc;
+            if(nr>=0 && nr<ROWS && nc>=0 && nc<COLS){
+              if(!revealedLM[nr][nc]){
+                revealCellLM(nr, nc);
+              }
+            }
+          }
+        }
+      }
+    }
+    function revealAllMinesLM(){
+      for(let r=0; r<ROWS; r++){
+        for(let c=0; c<COLS; c++){
+          if(boardLM[r][c] === 'M'){
+            revealedLM[r][c] = true;
+          }
+        }
+      }
+    }
+    function checkWinLM(){
+      if(gameOverLM) return;
+      let total = ROWS * COLS;
+      let safeCells = total - mineCountLM;
+      if(cellsRevealedLM === safeCells){
+        playAudioLM(audioWinLM);
+        showGameWinLM();
+        revealAllMinesLM();
+        renderBoardLM();
+      }
+    }
+    function showGameOverLM(){
+      gameOverLM = true;
+      gameOverElLM.style.display = '';
+    }
+    function showGameWinLM(){
+      gameOverLM = true;
+      gameWinElLM.style.display = '';
+    }
+    function hideCoverLM(){
+      gameOverElLM.style.display = 'none';
+      gameWinElLM.style.display = 'none';
+    }
+    function restartGameLM(){
+      initBoardLM();
+    }
+    function nextLevelLM(){
+      if (window.parent) {
+        window.parent.postMessage('goto-level-4', '*');
+      } else {
+        alert('恭喜通关！');
+        initBoardLM();
+      }
+    }
+    function playAudioLM(audio){
+      try { if(audio && audio.play) {audio.currentTime=0;audio.play();} } catch{}
+    }
+
+    // ==== 背景设置 ====
+    function setBackgroundsLM() {
+      document.body.style.background = loadedAssetsLM.bg
+        ? `url('${loadedAssetsLM.bg}') center/cover no-repeat`
+        : '#e5f9e0';
+      // 容器
+      const container = document.querySelector('.containerLM');
+      if(container) {
+        container.style.background = loadedAssetsLM.board
+          ? `url('${loadedAssetsLM.board}') center/cover no-repeat`
+          : 'linear-gradient(135deg, #b9e769 0%, #85d262 60%, #67b26f 100%)';
+      }
+      // 棋盘
+      const board = document.querySelector('.boardLM');
+      if(board) {
+        board.style.background = loadedAssetsLM.board
+          ? `url('${loadedAssetsLM.board}') center/cover no-repeat`
+          : 'repeating-linear-gradient(45deg,#aad751,#aad751 40px,#a2d149 40px,#a2d149 80px)';
+      }
+    }
+
+    // 禁止选中文字
+    boardElLM.onselectstart = () => false;
+
+    // ==== 启动 ====
+    preloadLM(() => {
+      setBackgroundsLM();
+      initBoardLM();
+    });
+  </script>
+</body>
+</html>
